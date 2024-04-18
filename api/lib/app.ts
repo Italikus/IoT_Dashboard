@@ -5,6 +5,8 @@ import Controller from './interfaces/controller.interface';
 import bodyParser from 'body-parser';
 import morgan from 'morgan';
 
+const mongoose = require('mongoose');
+
 class App {
     public app: express.Application;
 
@@ -12,6 +14,7 @@ class App {
         this.app = express();
         this.initializeMiddlewares();
         this.initializeControllers(controllers);
+        this.connectToDatabase();
     }
 
     private initializeMiddlewares(): void {
@@ -30,5 +33,35 @@ class App {
             console.log(`App listening on the port ${config.port}`);
         });
     }
+
+    private async connectToDatabase(): Promise<void> {
+        try {
+            await mongoose.connect(config.databaseUrl);
+            console.log('Connection with database established');
+        } catch (error) {
+            console.error('Error connecting to MongoDB:', error);
+        }
+
+        mongoose.connection.on('error', (error:any) => {
+            console.error('MongoDB connection error:', error);
+        });
+
+        mongoose.connection.on('disconnected', () => {
+            console.log('MongoDB disconnected');
+        });
+
+        process.on('SIGINT', async () => {
+            await mongoose.connection.close();
+            console.log('MongoDB connection closed due to app termination');
+            process.exit(0);
+        });
+
+        process.on('SIGTERM', async () => {
+            await mongoose.connection.close();
+            console.log('MongoDB connection closed due to app termination');
+            process.exit(0);
+        });
+    }
+
 }
 export default App;
